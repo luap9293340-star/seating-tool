@@ -3,23 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>班級座位隨機分配與即時表決系統</title>
+  <title>班級座位隨機分配器</title>
 
-  <!-- PWA 支援 -->
+  <!-- PWA 設定 -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#0f172a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <!-- Tailwind CSS & 圖示庫 -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
   <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-  <!-- Firebase SDK (選填：若有填入 config 會自動連線即時資料庫) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <style>
     @keyframes popIn {
@@ -27,20 +20,20 @@
       70% { transform: scale(1.1); }
       100% { transform: scale(1); opacity: 1; }
     }
-    .animate-pop { animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-    .dragging { opacity: 0.35; transform: scale(0.9); }
-    .drag-over { border-color: #38bdf8 !important; background-color: rgba(56, 189, 248, 0.08) !important; }
+    .animate-pop { animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .dragging { opacity: 0.3; transform: scale(0.9); }
+    .drag-over { border-color: #38bdf8 !important; background-color: rgba(56, 189, 248, 0.12) !important; }
 
-    /* 6 大桌時嚴格 2 欄 3 列，滿版無捲軸 */
+    /* 6 大桌時嚴格 2 欄 3 列，100vh 零捲軸滿版 */
     .grid-fixed-6 {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       grid-template-rows: repeat(3, minmax(0, 1fr));
     }
-    /* 超過 6 桌時的彈性網格 */
+    /* 超過 6 桌時彈性適配 */
     .grid-dynamic-multi {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     }
   </style>
 </head>
@@ -49,17 +42,17 @@
   <!-- ================= 老師端主畫面 ================= -->
   <div id="teacherView" class="h-full w-full flex flex-col">
     <!-- 頂部控制列 -->
-    <header class="h-14 border-b border-slate-800 bg-slate-900/80 backdrop-blur px-4 flex items-center justify-between shrink-0">
+    <header class="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-4 flex items-center justify-between shrink-0">
       <div class="flex items-center gap-2">
-        <div class="p-1.5 bg-blue-600 rounded-lg text-white">
-          <i data-lucide="layout-grid" class="w-4 h-4"></i>
+        <div class="p-1.5 bg-blue-600 rounded-lg text-white flex items-center justify-center">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         </div>
         <h1 class="text-base font-bold tracking-wide text-white">班級座位隨機配置</h1>
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- 桌數設定 (支援 2 ~ 12 桌) -->
-        <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1 text-sm">
+        <!-- 桌數設定 -->
+        <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-sm">
           <label for="tableCountInput" class="text-slate-400 text-xs mr-2">總桌數:</label>
           <input 
             id="tableCountInput" 
@@ -72,8 +65,8 @@
           <span class="text-xs text-slate-500 ml-1">桌</span>
         </div>
 
-        <!-- 班級總人數 -->
-        <div class="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg px-2.5 py-1 text-sm">
+        <!-- 人數設定 -->
+        <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-sm">
           <label for="studentCount" class="text-slate-400 text-xs mr-1">總人數:</label>
           <input 
             id="studentCount" 
@@ -87,184 +80,140 @@
         </div>
 
         <!-- 匿名表決按鈕 -->
-        <button id="btnOpenVoteModal" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-3 py-1.5 rounded-lg shadow-sm transition active:scale-95">
-          <i data-lucide="vote" class="w-3.5 h-3.5"></i>
+        <button id="btnOpenVoteModal" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-3 py-1.5 rounded-lg shadow transition active:scale-95">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
           <span class="hidden sm:inline">發起表決</span>
         </button>
 
         <!-- 隨機洗牌按鈕 -->
-        <button id="btnShuffle" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition active:scale-95">
-          <i data-lucide="shuffle" class="w-3.5 h-3.5"></i>
+        <button id="btnShuffle" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow transition active:scale-95">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>
           <span>隨機分組</span>
         </button>
 
-        <!-- 重設按鈕 -->
-        <button id="btnClear" class="flex items-center gap-1 text-slate-400 hover:text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition" title="清空座位">
-          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+        <!-- 清空重置按鈕 -->
+        <button id="btnClear" class="flex items-center text-slate-400 hover:text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition" title="清空座位">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
       </div>
     </header>
 
-    <!-- 6大桌內容區 (預設 2 欄 3 列無捲軸，超量時自動適配) -->
-    <main id="groupGrid" class="flex-1 p-2.5 gap-2.5 min-h-0 overflow-y-auto grid-fixed-6"></main>
+    <!-- 6大桌內容區 (預設 2欄 3列) -->
+    <main id="groupGrid" class="flex-1 p-2.5 gap-2.5 min-h-0 overflow-hidden grid-fixed-6"></main>
   </div>
 
-  <!-- ================= 老師端：表決控制彈窗 ================= -->
+  <!-- ================= 表決彈窗 ================= -->
   <div id="voteModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-[560px] p-6 shadow-2xl flex flex-col gap-5">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-[540px] p-6 shadow-2xl flex flex-col gap-5">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <i data-lucide="message-square-text" class="w-5 h-5 text-indigo-400"></i>
-          <h2 class="text-lg font-bold text-white">課堂匿名表決：是否重新抽籤洗牌？</h2>
-        </div>
-        <button id="btnCloseVoteModal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <span>即時表決：是否重新抽籤換座位？</span>
+        </h2>
+        <button id="btnCloseVoteModal" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
       </div>
 
-      <div class="flex gap-6 items-center">
-        <!-- 學生掃描的 QR Code 區塊 -->
-        <div class="flex flex-col items-center bg-white p-3 rounded-xl shrink-0">
+      <div class="flex gap-5 items-center">
+        <!-- QR Code -->
+        <div class="flex flex-col items-center bg-white p-2.5 rounded-xl shrink-0">
           <div id="qrcode"></div>
-          <span class="text-[10px] text-slate-600 font-bold mt-1">手機掃描投票</span>
+          <span class="text-[10px] text-slate-700 font-bold mt-1">同學掃描投票</span>
         </div>
 
-        <!-- 票數統計長條圖 -->
-        <div class="flex-1 flex flex-col gap-4">
+        <!-- 票數統計 -->
+        <div class="flex-1 flex flex-col gap-3">
           <div>
-            <div class="flex justify-between text-sm font-semibold mb-1">
-              <span class="text-emerald-400 flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i> 贊成換座位</span>
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span class="text-emerald-400">贊成換座位</span>
               <span id="voteYesCount" class="text-emerald-400">0 票 (0%)</span>
             </div>
-            <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
               <div id="voteYesBar" class="h-full bg-emerald-500 transition-all duration-300 w-0"></div>
             </div>
           </div>
 
           <div>
-            <div class="flex justify-between text-sm font-semibold mb-1">
-              <span class="text-rose-400 flex items-center gap-1"><i data-lucide="x" class="w-4 h-4"></i> 維持現狀</span>
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span class="text-rose-400">維持現狀</span>
               <span id="voteNoCount" class="text-rose-400">0 票 (0%)</span>
             </div>
-            <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
               <div id="voteNoBar" class="h-full bg-rose-500 transition-all duration-300 w-0"></div>
             </div>
           </div>
 
-          <div class="text-xs text-slate-400 flex justify-between items-center pt-2 border-t border-slate-800">
-            <span>已投總票數：<strong id="voteTotalCount" class="text-white">0</strong> 票</span>
-            <span id="voteStatusText" class="text-indigo-400 font-medium">即時統計中...</span>
+          <div class="text-[11px] text-slate-400 flex justify-between items-center pt-2 border-t border-slate-800">
+            <span>總票數：<strong id="voteTotalCount" class="text-white">0</strong></span>
+            <span id="voteStatusText" class="text-indigo-400 font-medium">投票中...</span>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end gap-3 pt-2">
-        <button id="btnResetVote" class="px-3.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg border border-slate-700 transition">清空票數</button>
-        <button id="btnApplyShuffle" class="px-4 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow-lg shadow-emerald-600/30">
-          採納結果並執行隨機分組
-        </button>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="btnResetVote" class="px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg border border-slate-700 transition">清空票數</button>
+        <button id="btnApplyShuffle" class="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition">採納並洗牌</button>
       </div>
     </div>
   </div>
 
-  <!-- ================= 學生端：手機投票頁面 ================= -->
+  <!-- ================= 學生端手機介面 ================= -->
   <div id="studentView" class="h-full w-full flex flex-col items-center justify-center p-6 bg-slate-950 hidden">
-    <div class="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-xl flex flex-col gap-6">
-      <div class="flex flex-col items-center gap-2">
-        <div class="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-          <i data-lucide="vote" class="w-6 h-6"></i>
-        </div>
-        <h2 class="text-lg font-bold text-white">課堂匿名表決</h2>
-        <p class="text-xs text-slate-400">請問您是否贊成這節課重新抽籤換座位？</p>
+    <div class="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-xl flex flex-col gap-5">
+      <div>
+        <h2 class="text-lg font-bold text-white mb-1">課堂匿名表決</h2>
+        <p class="text-xs text-slate-400">是否贊成這節課重新抽籤換座位？</p>
       </div>
 
       <div id="studentVoteAction" class="flex flex-col gap-3">
-        <button id="btnStudentYes" class="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
-          <i data-lucide="check" class="w-5 h-5"></i> 贊成換座位
+        <button id="btnStudentYes" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow transition active:scale-95">
+          ✔ 贊成換座位
         </button>
-        <button id="btnStudentNo" class="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-base shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
-          <i data-lucide="x" class="w-5 h-5"></i> 維持現狀
+        <button id="btnStudentNo" class="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow transition active:scale-95">
+          ✖ 維持現狀
         </button>
       </div>
 
       <div id="studentVoteSubmitted" class="hidden flex flex-col items-center gap-2 py-4">
-        <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-400"></i>
-        <h3 class="text-base font-bold text-white">投票已送出！</h3>
-        <p class="text-xs text-slate-400">您的選擇已計入，請看大螢幕即時統計。</p>
+        <span class="text-3xl">🎉</span>
+        <h3 class="text-sm font-bold text-white">投票已送出！</h3>
+        <p class="text-xs text-slate-400">請看大螢幕即時統計結果。</p>
       </div>
     </div>
   </div>
 
   <script>
-    // ========================================================
-    // 1. Firebase 設定 (如無 Firebase 仍可正常分組與展示)
-    // ========================================================
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    let db = null;
-    let isFirebaseReady = false;
-
-    try {
-      if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.database();
-        isFirebaseReady = true;
-      }
-    } catch(e) {
-      console.warn("Firebase 未設定或尚未填入正確憑證，將以本地狀態模式執行。");
-    }
-
-    // ========================================================
-    // 2. 路由分流判斷
-    // ========================================================
+    // 檢查是否為學生手機端投票
     const urlParams = new URLSearchParams(window.location.search);
     const isStudent = urlParams.get('vote') === 'true';
 
     if (isStudent) {
       document.getElementById('teacherView').classList.add('hidden');
       document.getElementById('studentView').classList.remove('hidden');
-      initStudentVote();
-    } else {
-      initTeacherSeating();
-    }
 
-    // ========================================================
-    // 3. 學生端手機投票邏輯
-    // ========================================================
-    function initStudentVote() {
       const voteAction = document.getElementById('studentVoteAction');
       const voteSubmitted = document.getElementById('studentVoteSubmitted');
 
-      if (localStorage.getItem('has_voted')) {
+      if (localStorage.getItem('vote_submitted')) {
         voteAction.classList.add('hidden');
         voteSubmitted.classList.remove('hidden');
       }
 
-      function castVote(choice) {
-        if (isFirebaseReady) {
-          const voteRef = db.ref('current_vote/' + choice);
-          voteRef.transaction((currentVotes) => (currentVotes || 0) + 1);
-        }
-        localStorage.setItem('has_voted', 'true');
+      function vote(choice) {
+        localStorage.setItem('vote_submitted', 'true');
         voteAction.classList.add('hidden');
         voteSubmitted.classList.remove('hidden');
+        // 本地/廣播通知
+        try {
+          const currentVotes = JSON.parse(localStorage.getItem('classroom_votes') || '{"yes":0,"no":0}');
+          currentVotes[choice] = (currentVotes[choice] || 0) + 1;
+          localStorage.setItem('classroom_votes', JSON.stringify(currentVotes));
+        } catch(e){}
       }
 
-      document.getElementById('btnStudentYes').addEventListener('click', () => castVote('yes'));
-      document.getElementById('btnStudentNo').addEventListener('click', () => castVote('no'));
-      lucide.createIcons();
-    }
+      document.getElementById('btnStudentYes').addEventListener('click', () => vote('yes'));
+      document.getElementById('btnStudentNo').addEventListener('click', () => vote('no'));
 
-    // ========================================================
-    // 4. 老師端主畫面與分組排版邏輯
-    // ========================================================
-    function initTeacherSeating() {
+    } else {
+      // 老師端主邏輯
       const MAX_PER_TABLE = 7;
       let totalTables = 6;
 
@@ -327,12 +276,12 @@
           titleText.className = `text-lg sm:text-xl font-black tracking-wide ${theme.badge} group-hover:underline flex items-center gap-1`;
           titleText.innerText = tableNames[index] || `第 ${index + 1} 組`;
 
-          const editIcon = document.createElement('i');
-          editIcon.setAttribute('data-lucide', 'pencil');
-          editIcon.className = 'w-3.5 h-3.5 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity';
+          const editBadge = document.createElement('span');
+          editBadge.className = 'text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity';
+          editBadge.innerText = '✎';
 
           titleWrapper.appendChild(titleText);
-          titleWrapper.appendChild(editIcon);
+          titleWrapper.appendChild(editBadge);
 
           // 原地編輯組名
           titleWrapper.addEventListener('click', () => {
@@ -358,7 +307,7 @@
           });
 
           const countInfo = document.createElement('span');
-          countInfo.className = 'text-xs font-mono font-medium text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded-md border border-slate-800';
+          countInfo.className = 'text-xs font-mono font-medium text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800';
           countInfo.innerText = `${members.length} / ${MAX_PER_TABLE} 人`;
 
           header.appendChild(titleWrapper);
@@ -372,7 +321,7 @@
           // 正方形中央桌（背景標示）
           const squareDesk = document.createElement('div');
           squareDesk.className = `absolute w-20 h-20 rounded-xl border border-dashed border-slate-700/60 ${theme.desk} flex flex-col items-center justify-center opacity-40 pointer-events-none`;
-          squareDesk.innerHTML = `<i data-lucide="coffee" class="w-4 h-4 mb-0.5"></i><span class="text-[10px] font-bold tracking-wider">T-${index + 1}</span>`;
+          squareDesk.innerHTML = `<span class="text-xs">☕</span><span class="text-[10px] font-bold tracking-wider mt-0.5">T-${index + 1}</span>`;
           stage.appendChild(squareDesk);
 
           // 席位容器（第一列 4 席、第二列 3 席）
@@ -389,7 +338,6 @@
             const seatElem = document.createElement('div');
 
             if (studentNumber !== undefined) {
-              // 座號圓圈（字體 text-sm ~ base，明顯小於組別）
               seatElem.className = `w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 ${theme.circle} flex items-center justify-center text-sm sm:text-base font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform animate-pop`;
               seatElem.innerText = studentNumber;
               seatElem.draggable = true;
@@ -435,8 +383,6 @@
 
           container.appendChild(card);
         }
-
-        lucide.createIcons();
       }
 
       function shuffleStudents() {
@@ -482,56 +428,21 @@
       document.getElementById('btnOpenVoteModal').addEventListener('click', () => {
         voteModal.classList.remove('hidden');
         if (!qrCodeObj) {
-          // 動態抓取當前完整網址並加上 ?vote=true
           const currentUrl = new URL(window.location.href);
           currentUrl.searchParams.set('vote', 'true');
 
           qrCodeObj = new QRCode(qrcodeContainer, {
             text: currentUrl.toString(),
-            width: 130,
-            height: 130,
+            width: 120,
+            height: 120,
             colorDark: "#0f172a",
             colorLight: "#ffffff",
             correctLevel: QRCode.CorrectLevel.M
           });
         }
-        listenToVotes();
       });
 
       document.getElementById('btnCloseVoteModal').addEventListener('click', () => voteModal.classList.add('hidden'));
-
-      // 監聽即時票數
-      function listenToVotes() {
-        if (!isFirebaseReady) return;
-        db.ref('current_vote').on('value', (snapshot) => {
-          const data = snapshot.val() || { yes: 0, no: 0 };
-          const yes = data.yes || 0;
-          const no = data.no || 0;
-          const total = yes + no;
-
-          const yesPct = total > 0 ? Math.round((yes / total) * 100) : 0;
-          const noPct = total > 0 ? Math.round((no / total) * 100) : 0;
-
-          document.getElementById('voteYesCount').innerText = `${yes} 票 (${yesPct}%)`;
-          document.getElementById('voteNoCount').innerText = `${no} 票 (${noPct}%)`;
-          document.getElementById('voteTotalCount').innerText = total;
-
-          document.getElementById('voteYesBar').style.width = `${yesPct}%`;
-          document.getElementById('voteNoBar').style.width = `${noPct}%`;
-
-          const statusElem = document.getElementById('voteStatusText');
-          if (total > 0) {
-            statusElem.innerText = yes > no ? '目前【贊成】過半數' : (no > yes ? '目前【反對】過半數' : '目前票數平手');
-          }
-        });
-      }
-
-      document.getElementById('btnResetVote').addEventListener('click', () => {
-        if (isFirebaseReady) {
-          db.ref('current_vote').set({ yes: 0, no: 0 });
-        }
-      });
-
       document.getElementById('btnApplyShuffle').addEventListener('click', () => {
         voteModal.classList.add('hidden');
         shuffleStudents();
