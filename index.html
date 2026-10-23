@@ -2,461 +2,748 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>班級座位隨機分配器</title>
-
-  <!-- PWA 設定 -->
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0f172a">
-
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- QRCode.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
+  <title>班級大組座位分配器與即時表決</title>
   <style>
-    @keyframes popIn {
-      0% { transform: scale(0.4); opacity: 0; }
-      70% { transform: scale(1.1); }
-      100% { transform: scale(1); opacity: 1; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
     }
-    .animate-pop { animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-    .dragging { opacity: 0.3; transform: scale(0.9); }
-    .drag-over { border-color: #38bdf8 !important; background-color: rgba(56, 189, 248, 0.12) !important; }
+    body {
+      background-color: #0f172a;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      height: 52px;
+      background: #1e293b;
+      border-bottom: 2px solid #334155;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .brand {
+      font-size: 17px;
+      font-weight: bold;
+      color: #38bdf8;
+    }
+    .tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .input-box {
+      display: flex;
+      align-items: center;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .input-box input {
+      background: transparent;
+      border: none;
+      color: #ffffff;
+      font-weight: bold;
+      text-align: center;
+      width: 40px;
+      outline: none;
+      font-size: 14px;
+    }
+    .btn {
+      padding: 6px 13px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn:active {
+      transform: scale(0.96);
+    }
+    .btn-vote {
+      background: #6366f1;
+      color: #ffffff;
+    }
+    .btn-vote:hover {
+      background: #4f46e5;
+    }
+    .btn-shuffle {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    .btn-shuffle:hover {
+      background: #1d4ed8;
+    }
+    .btn-clear {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    .btn-clear:hover {
+      background: #475569;
+    }
 
-    /* 6 大桌時嚴格 2 欄 3 列，100vh 零捲軸滿版 */
-    .grid-fixed-6 {
+    /* 網格版面 */
+    main {
+      flex: 1;
+      padding: 8px 12px 12px 12px;
+      gap: 10px;
+      min-height: 0;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      grid-template-rows: repeat(3, minmax(0, 1fr));
     }
-    /* 超過 6 桌時彈性適配 */
-    .grid-dynamic-multi {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    main.mode-fixed-6 {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      overflow: hidden;
+    }
+    main.mode-scroll-multi {
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      grid-template-rows: repeat(auto-fill, minmax(180px, 1fr));
+      overflow-y: auto;
+    }
+
+    .table-box {
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .table-box.hidden {
+      display: none !important;
+    }
+
+    .box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 4px;
+    }
+    .group-title {
+      font-size: 20px;
+      font-weight: 900;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .group-title:hover {
+      text-decoration: underline;
+    }
+    .badge {
+      font-size: 11px;
+      color: #94a3b8;
+      background: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      font-family: monospace;
+    }
+    .desk-stage {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .desk-square {
+      position: absolute;
+      width: 74px;
+      height: 74px;
+      border: 1px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      opacity: 0.35;
+      pointer-events-none;
+    }
+    .seats-grid {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+    .row {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    .circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: bold;
+      border: 2px solid transparent;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .circle.empty {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px dashed #475569;
+      color: #475569;
+      font-size: 12px;
+      box-shadow: none;
+    }
+
+    /* 組別顏色 */
+    .t0 { border-color: rgba(56, 189, 248, 0.5); }
+    .t0 .group-title { color: #38bdf8; }
+    .t0 .circle:not(.empty) { background: #0284c7; border-color: #7dd3fc; }
+
+    .t1 { border-color: rgba(52, 211, 153, 0.5); }
+    .t1 .group-title { color: #34d399; }
+    .t1 .circle:not(.empty) { background: #059669; border-color: #6ee7b7; }
+
+    .t2 { border-color: rgba(251, 191, 36, 0.5); }
+    .t2 .group-title { color: #fbbf24; }
+    .t2 .circle:not(.empty) { background: #d97706; border-color: #fde68a; }
+
+    .t3 { border-color: rgba(192, 132, 252, 0.5); }
+    .t3 .group-title { color: #c084fc; }
+    .t3 .circle:not(.empty) { background: #9333ea; border-color: #e9d5ff; }
+
+    .t4 { border-color: rgba(251, 113, 133, 0.5); }
+    .t4 .group-title { color: #fb7185; }
+    .t4 .circle:not(.empty) { background: #e11d48; border-color: #fecdd3; }
+
+    .t5 { border-color: rgba(45, 212, 191, 0.5); }
+    .t5 .group-title { color: #2dd4bf; }
+    .t5 .circle:not(.empty) { background: #0d9488; border-color: #99f6e4; }
+
+    .t6 { border-color: rgba(99, 102, 241, 0.5); }
+    .t6 .group-title { color: #818cf8; }
+    .t6 .circle:not(.empty) { background: #4f46e5; border-color: #c7d2fe; }
+
+    .t7 { border-color: rgba(234, 179, 8, 0.5); }
+    .t7 .group-title { color: #facc15; }
+    .t7 .circle:not(.empty) { background: #ca8a04; border-color: #fef08a; }
+
+    .t8 { border-color: rgba(236, 72, 153, 0.5); }
+    .t8 .group-title { color: #f472b6; }
+    .t8 .circle:not(.empty) { background: #db2777; border-color: #fbcfe8; }
+
+    .t9 { border-color: rgba(14, 165, 233, 0.5); }
+    .t9 .group-title { color: #38bdf8; }
+    .t9 .circle:not(.empty) { background: #0284c7; border-color: #bae6fd; }
+
+    .t10 { border-color: rgba(34, 197, 94, 0.5); }
+    .t10 .group-title { color: #4ade80; }
+    .t10 .circle:not(.empty) { background: #16a34a; border-color: #bbf7d0; }
+
+    .t11 { border-color: rgba(168, 85, 247, 0.5); }
+    .t11 .group-title { color: #c084fc; }
+    .t11 .circle:not(.empty) { background: #9333ea; border-color: #f3e8ff; }
+
+    /* 表決彈窗 */
+    .vote-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .vote-modal-backdrop.hidden {
+      display: none !important;
+    }
+    .vote-box {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 14px;
+      width: 520px;
+      padding: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+    }
+    .vote-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    .vote-body {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .qr-container {
+      background: #ffffff;
+      padding: 8px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .qr-container img {
+      width: 120px;
+      height: 120px;
+      display: block;
+    }
+    .qr-subtext {
+      font-size: 11px;
+      color: #334155;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    .vote-stats {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .bar-wrap {
+      width: 100%;
+      height: 12px;
+      background: #0f172a;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .bar-fill-yes { height: 100%; width: 0%; background: #10b981; transition: width 0.3s; }
+    .bar-fill-no { height: 100%; width: 0%; background: #ef4444; transition: width 0.3s; }
+
+    /* 學生手機端獨立介面 */
+    #studentView {
+      position: fixed;
+      inset: 0;
+      background: #0f172a;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #studentView.hidden {
+      display: none !important;
+    }
+    .student-card {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 16px;
+      max-width: 320px;
+      width: 100%;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .btn-large-yes {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      background: #10b981;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    .btn-large-no {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      background: #ef4444;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
     }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
+<body>
 
   <!-- ================= 老師端主畫面 ================= -->
-  <div id="teacherView" class="h-full w-full flex flex-col">
-    <!-- 頂部控制列 -->
-    <header class="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-4 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2">
-        <div class="p-1.5 bg-blue-600 rounded-lg text-white flex items-center justify-center">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+  <div id="teacherView" style="height:100%; width:100%; display:flex; flex-direction:column;">
+    <header>
+      <div class="brand">🪑 班級大組座位分配</div>
+      <div class="tools">
+        <div class="input-box">
+          <label for="tableCountInput" style="margin-right: 4px;">桌數:</label>
+          <input type="number" id="tableCountInput" min="2" max="12" value="6" style="color:#fbbf24;">
+          <span>桌</span>
         </div>
-        <h1 class="text-base font-bold tracking-wide text-white">班級座位隨機配置</h1>
-      </div>
-
-      <div class="flex items-center gap-3">
-        <!-- 桌數設定 -->
-        <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-sm">
-          <label for="tableCountInput" class="text-slate-400 text-xs mr-2">總桌數:</label>
-          <input 
-            id="tableCountInput" 
-            type="number" 
-            min="2" 
-            max="12" 
-            value="6" 
-            class="w-9 bg-transparent text-amber-400 font-bold text-center focus:outline-none text-sm"
-          />
-          <span class="text-xs text-slate-500 ml-1">桌</span>
+        <div class="input-box">
+          <label for="studentCountInput" style="margin-right: 4px;">總人數:</label>
+          <input type="number" id="studentCountInput" min="1" max="42" value="36">
+          <span id="capacityLabel">/ 42人</span>
         </div>
-
-        <!-- 人數設定 -->
-        <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-sm">
-          <label for="studentCount" class="text-slate-400 text-xs mr-1">總人數:</label>
-          <input 
-            id="studentCount" 
-            type="number" 
-            min="1" 
-            max="42" 
-            value="36" 
-            class="w-10 bg-transparent text-white font-bold text-center focus:outline-none text-sm"
-          />
-          <span id="capacityLabel" class="text-xs text-slate-500 ml-1">/ 42人</span>
-        </div>
-
-        <!-- 匿名表決按鈕 -->
-        <button id="btnOpenVoteModal" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs px-3 py-1.5 rounded-lg shadow transition active:scale-95">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
-          <span class="hidden sm:inline">發起表決</span>
-        </button>
-
-        <!-- 隨機洗牌按鈕 -->
-        <button id="btnShuffle" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow transition active:scale-95">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/></svg>
-          <span>隨機分組</span>
-        </button>
-
-        <!-- 清空重置按鈕 -->
-        <button id="btnClear" class="flex items-center text-slate-400 hover:text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-slate-800 transition" title="清空座位">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-        </button>
+        <button class="btn btn-vote" id="btnOpenVote">🗳 發起表決</button>
+        <button class="btn btn-shuffle" id="btnRun">🔀 隨機分組</button>
+        <button class="btn btn-clear" id="btnReset">清空</button>
       </div>
     </header>
 
-    <!-- 6大桌內容區 (預設 2欄 3列) -->
-    <main id="groupGrid" class="flex-1 p-2.5 gap-2.5 min-h-0 overflow-hidden grid-fixed-6"></main>
+    <!-- 靜態 12 大桌結構 -->
+    <main id="mainGrid" class="mode-fixed-6">
+      <div class="table-box t0" id="card-0">
+        <div class="box-header"><div class="group-title" onclick="editName(0)"><span id="name-0">第一組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-0">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>01</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-0-0">1</div><div class="circle empty" id="s-0-1">2</div><div class="circle empty" id="s-0-2">3</div><div class="circle empty" id="s-0-3">4</div></div><div class="row"><div class="circle empty" id="s-0-4">5</div><div class="circle empty" id="s-0-5">6</div><div class="circle empty" id="s-0-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t1" id="card-1">
+        <div class="box-header"><div class="group-title" onclick="editName(1)"><span id="name-1">第二組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-1">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>02</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-1-0">1</div><div class="circle empty" id="s-1-1">2</div><div class="circle empty" id="s-1-2">3</div><div class="circle empty" id="s-1-3">4</div></div><div class="row"><div class="circle empty" id="s-1-4">5</div><div class="circle empty" id="s-1-5">6</div><div class="circle empty" id="s-1-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t2" id="card-2">
+        <div class="box-header"><div class="group-title" onclick="editName(2)"><span id="name-2">第三組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-2">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>03</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-2-0">1</div><div class="circle empty" id="s-2-1">2</div><div class="circle empty" id="s-2-2">3</div><div class="circle empty" id="s-2-3">4</div></div><div class="row"><div class="circle empty" id="s-2-4">5</div><div class="circle empty" id="s-2-5">6</div><div class="circle empty" id="s-2-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t3" id="card-3">
+        <div class="box-header"><div class="group-title" onclick="editName(3)"><span id="name-3">第四組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-3">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>04</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-3-0">1</div><div class="circle empty" id="s-3-1">2</div><div class="circle empty" id="s-3-2">3</div><div class="circle empty" id="s-3-3">4</div></div><div class="row"><div class="circle empty" id="s-3-4">5</div><div class="circle empty" id="s-3-5">6</div><div class="circle empty" id="s-3-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t4" id="card-4">
+        <div class="box-header"><div class="group-title" onclick="editName(4)"><span id="name-4">第五組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-4">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>05</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-4-0">1</div><div class="circle empty" id="s-4-1">2</div><div class="circle empty" id="s-4-2">3</div><div class="circle empty" id="s-4-3">4</div></div><div class="row"><div class="circle empty" id="s-4-4">5</div><div class="circle empty" id="s-4-5">6</div><div class="circle empty" id="s-4-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t5" id="card-5">
+        <div class="box-header"><div class="group-title" onclick="editName(5)"><span id="name-5">第六組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-5">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>06</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-5-0">1</div><div class="circle empty" id="s-5-1">2</div><div class="circle empty" id="s-5-2">3</div><div class="circle empty" id="s-5-3">4</div></div><div class="row"><div class="circle empty" id="s-5-4">5</div><div class="circle empty" id="s-5-5">6</div><div class="circle empty" id="s-5-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t6 hidden" id="card-6">
+        <div class="box-header"><div class="group-title" onclick="editName(6)"><span id="name-6">第七組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-6">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>07</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-6-0">1</div><div class="circle empty" id="s-6-1">2</div><div class="circle empty" id="s-6-2">3</div><div class="circle empty" id="s-6-3">4</div></div><div class="row"><div class="circle empty" id="s-6-4">5</div><div class="circle empty" id="s-6-5">6</div><div class="circle empty" id="s-6-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t7 hidden" id="card-7">
+        <div class="box-header"><div class="group-title" onclick="editName(7)"><span id="name-7">第八組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-7">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>08</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-7-0">1</div><div class="circle empty" id="s-7-1">2</div><div class="circle empty" id="s-7-2">3</div><div class="circle empty" id="s-7-3">4</div></div><div class="row"><div class="circle empty" id="s-7-4">5</div><div class="circle empty" id="s-7-5">6</div><div class="circle empty" id="s-7-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t8 hidden" id="card-8">
+        <div class="box-header"><div class="group-title" onclick="editName(8)"><span id="name-8">第九組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-8">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>09</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-8-0">1</div><div class="circle empty" id="s-8-1">2</div><div class="circle empty" id="s-8-2">3</div><div class="circle empty" id="s-8-3">4</div></div><div class="row"><div class="circle empty" id="s-8-4">5</div><div class="circle empty" id="s-8-5">6</div><div class="circle empty" id="s-8-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t9 hidden" id="card-9">
+        <div class="box-header"><div class="group-title" onclick="editName(9)"><span id="name-9">第十組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-9">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>10</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-9-0">1</div><div class="circle empty" id="s-9-1">2</div><div class="circle empty" id="s-9-2">3</div><div class="circle empty" id="s-9-3">4</div></div><div class="row"><div class="circle empty" id="s-9-4">5</div><div class="circle empty" id="s-9-5">6</div><div class="circle empty" id="s-9-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t10 hidden" id="card-10">
+        <div class="box-header"><div class="group-title" onclick="editName(10)"><span id="name-10">第十一組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-10">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>11</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-10-0">1</div><div class="circle empty" id="s-10-1">2</div><div class="circle empty" id="s-10-2">3</div><div class="circle empty" id="s-10-3">4</div></div><div class="row"><div class="circle empty" id="s-10-4">5</div><div class="circle empty" id="s-10-5">6</div><div class="circle empty" id="s-10-6">7</div></div></div>
+        </div>
+      </div>
+      <div class="table-box t11 hidden" id="card-11">
+        <div class="box-header"><div class="group-title" onclick="editName(11)"><span id="name-11">第十二組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-11">0 / 7 人</div></div>
+        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>12</span></div>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-11-0">1</div><div class="circle empty" id="s-11-1">2</div><div class="circle empty" id="s-11-2">3</div><div class="circle empty" id="s-11-3">4</div></div><div class="row"><div class="circle empty" id="s-11-4">5</div><div class="circle empty" id="s-11-5">6</div><div class="circle empty" id="s-11-6">7</div></div></div>
+        </div>
+      </div>
+    </main>
   </div>
 
-  <!-- ================= 表決彈窗 ================= -->
-  <div id="voteModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-[540px] p-6 shadow-2xl flex flex-col gap-5">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h2 class="text-base font-bold text-white flex items-center gap-2">
-          <span>即時表決：是否重新抽籤換座位？</span>
-        </h2>
-        <button id="btnCloseVoteModal" class="text-slate-400 hover:text-white text-lg font-bold">✕</button>
+  <!-- ================= 表決彈窗 (老師端大螢幕) ================= -->
+  <div id="voteModal" class="vote-modal-backdrop hidden">
+    <div class="vote-box">
+      <div class="vote-head">
+        <span style="font-size:16px; font-weight:bold; color:#f8fafc;">課堂表決：是否重新抽籤換座位？</span>
+        <button id="btnCloseVote" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">✕</button>
       </div>
 
-      <div class="flex gap-5 items-center">
-        <!-- QR Code -->
-        <div class="flex flex-col items-center bg-white p-2.5 rounded-xl shrink-0">
-          <div id="qrcode"></div>
-          <span class="text-[10px] text-slate-700 font-bold mt-1">同學掃描投票</span>
+      <div class="vote-body">
+        <div class="qr-container">
+          <img id="qrImage" src="" alt="投票 QR Code">
+          <span class="qr-subtext">同學掃描投票</span>
         </div>
 
-        <!-- 票數統計 -->
-        <div class="flex-1 flex flex-col gap-3">
+        <div class="vote-stats">
           <div>
-            <div class="flex justify-between text-xs font-semibold mb-1">
-              <span class="text-emerald-400">贊成換座位</span>
-              <span id="voteYesCount" class="text-emerald-400">0 票 (0%)</span>
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
+              <span style="color:#34d399;">贊成換座位</span>
+              <span id="txtYes" style="color:#34d399;">0 票 (0%)</span>
             </div>
-            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-              <div id="voteYesBar" class="h-full bg-emerald-500 transition-all duration-300 w-0"></div>
-            </div>
+            <div class="bar-wrap"><div id="barYes" class="bar-fill-yes"></div></div>
           </div>
 
           <div>
-            <div class="flex justify-between text-xs font-semibold mb-1">
-              <span class="text-rose-400">維持現狀</span>
-              <span id="voteNoCount" class="text-rose-400">0 票 (0%)</span>
+            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
+              <span style="color:#f87171;">維持現狀</span>
+              <span id="txtNo" style="color:#f87171;">0 票 (0%)</span>
             </div>
-            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
-              <div id="voteNoBar" class="h-full bg-rose-500 transition-all duration-300 w-0"></div>
-            </div>
+            <div class="bar-wrap"><div id="barNo" class="bar-fill-no"></div></div>
           </div>
 
-          <div class="text-[11px] text-slate-400 flex justify-between items-center pt-2 border-t border-slate-800">
-            <span>總票數：<strong id="voteTotalCount" class="text-white">0</strong></span>
-            <span id="voteStatusText" class="text-indigo-400 font-medium">投票中...</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#94a3b8; border-top:1px solid #334155; padding-top:8px;">
+            <span>總票數：<strong id="txtTotal" style="color:#fff;">0</strong></span>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-clear" id="btnManualYes" style="padding:4px 8px; font-size:11px;">+1 贊成</button>
+              <button class="btn btn-clear" id="btnManualNo" style="padding:4px 8px; font-size:11px;">+1 反對</button>
+              <button class="btn btn-clear" id="btnClearVotes" style="padding:4px 8px; font-size:11px;">清空</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 pt-2">
-        <button id="btnResetVote" class="px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 rounded-lg border border-slate-700 transition">清空票數</button>
-        <button id="btnApplyShuffle" class="px-3.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition">採納並洗牌</button>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="btn btn-shuffle" id="btnApplyAndShuffle" style="background:#10b981;">採納結果並隨機洗牌</button>
       </div>
     </div>
   </div>
 
-  <!-- ================= 學生端手機介面 ================= -->
-  <div id="studentView" class="h-full w-full flex flex-col items-center justify-center p-6 bg-slate-950 hidden">
-    <div class="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center shadow-xl flex flex-col gap-5">
-      <div>
-        <h2 class="text-lg font-bold text-white mb-1">課堂匿名表決</h2>
-        <p class="text-xs text-slate-400">是否贊成這節課重新抽籤換座位？</p>
+  <!-- ================= 學生端手機投票介面 ================= -->
+  <div id="studentView" class="hidden">
+    <div class="student-card">
+      <h2 style="font-size:18px; margin-bottom:8px; color:#38bdf8;">課堂匿名表決</h2>
+      <p style="font-size:13px; color:#94a3b8; margin-bottom:20px;">是否贊成這節課重新抽籤換座位？</p>
+
+      <div id="studentActionWrap">
+        <button class="btn-large-yes" id="btnStuYes">✔ 贊成換座位</button>
+        <button class="btn-large-no" id="btnStuNo">✖ 維持現狀</button>
       </div>
 
-      <div id="studentVoteAction" class="flex flex-col gap-3">
-        <button id="btnStudentYes" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow transition active:scale-95">
-          ✔ 贊成換座位
-        </button>
-        <button id="btnStudentNo" class="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm shadow transition active:scale-95">
-          ✖ 維持現狀
-        </button>
-      </div>
-
-      <div id="studentVoteSubmitted" class="hidden flex flex-col items-center gap-2 py-4">
-        <span class="text-3xl">🎉</span>
-        <h3 class="text-sm font-bold text-white">投票已送出！</h3>
-        <p class="text-xs text-slate-400">請看大螢幕即時統計結果。</p>
+      <div id="studentDoneWrap" class="hidden" style="padding:16px 0;">
+        <div style="font-size:36px; margin-bottom:8px;">✅</div>
+        <h3 style="font-size:16px; font-weight:bold; color:#10b981; margin-bottom:4px;">投票已送出！</h3>
+        <p style="font-size:12px; color:#94a3b8;">請看黑板投影幕即時開票結果。</p>
       </div>
     </div>
   </div>
 
   <script>
-    // 檢查是否為學生手機端投票
-    const urlParams = new URLSearchParams(window.location.search);
-    const isStudent = urlParams.get('vote') === 'true';
+    // 判斷是否為手機掃描投票模式
+    var isStudentMode = window.location.search.indexOf('vote=true') !== -1;
 
-    if (isStudent) {
-      document.getElementById('teacherView').classList.add('hidden');
+    if (isStudentMode) {
+      document.getElementById('teacherView').style.display = 'none';
       document.getElementById('studentView').classList.remove('hidden');
 
-      const voteAction = document.getElementById('studentVoteAction');
-      const voteSubmitted = document.getElementById('studentVoteSubmitted');
+      var stuAction = document.getElementById('studentActionWrap');
+      var stuDone = document.getElementById('studentDoneWrap');
 
-      if (localStorage.getItem('vote_submitted')) {
-        voteAction.classList.add('hidden');
-        voteSubmitted.classList.remove('hidden');
+      // 檢查是否已投過票
+      if (localStorage.getItem('student_has_voted')) {
+        stuAction.classList.add('hidden');
+        stuDone.classList.remove('hidden');
       }
 
-      function vote(choice) {
-        localStorage.setItem('vote_submitted', 'true');
-        voteAction.classList.add('hidden');
-        voteSubmitted.classList.remove('hidden');
-        // 本地/廣播通知
-        try {
-          const currentVotes = JSON.parse(localStorage.getItem('classroom_votes') || '{"yes":0,"no":0}');
-          currentVotes[choice] = (currentVotes[choice] || 0) + 1;
-          localStorage.setItem('classroom_votes', JSON.stringify(currentVotes));
-        } catch(e){}
+      function sendStudentVote(choice) {
+        localStorage.setItem('student_has_voted', 'true');
+        stuAction.classList.add('hidden');
+        stuDone.classList.remove('hidden');
+
+        // 發送廣播通知大螢幕
+        var voteEvent = { type: choice, timestamp: Date.now() };
+        localStorage.setItem('classroom_vote_event', JSON.stringify(voteEvent));
       }
 
-      document.getElementById('btnStudentYes').addEventListener('click', () => vote('yes'));
-      document.getElementById('btnStudentNo').addEventListener('click', () => vote('no'));
+      document.getElementById('btnStuYes').onclick = function() { sendStudentVote('yes'); };
+      document.getElementById('btnStuNo').onclick = function() { sendStudentVote('no'); };
 
     } else {
       // 老師端主邏輯
-      const MAX_PER_TABLE = 7;
-      let totalTables = 6;
+      var currentTableCount = 6;
+      var votesYes = 0;
+      var votesNo = 0;
 
-      const THEME_PALETTE = [
-        { bg: 'bg-blue-500/10', border: 'border-blue-500/30', badge: 'text-blue-400', desk: 'bg-blue-500/20 text-blue-400', circle: 'bg-blue-600 border-blue-400 text-white' },
-        { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', badge: 'text-emerald-400', desk: 'bg-emerald-500/20 text-emerald-400', circle: 'bg-emerald-600 border-emerald-400 text-white' },
-        { bg: 'bg-amber-500/10', border: 'border-amber-500/30', badge: 'text-amber-400', desk: 'bg-amber-500/20 text-amber-400', circle: 'bg-amber-600 border-amber-400 text-white' },
-        { bg: 'bg-purple-500/10', border: 'border-purple-500/30', badge: 'text-purple-400', desk: 'bg-purple-500/20 text-purple-400', circle: 'bg-purple-600 border-purple-400 text-white' },
-        { bg: 'bg-rose-500/10', border: 'border-rose-500/30', badge: 'text-rose-400', desk: 'bg-rose-500/20 text-rose-400', circle: 'bg-rose-600 border-rose-400 text-white' },
-        { bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', badge: 'text-cyan-400', desk: 'bg-cyan-500/20 text-cyan-400', circle: 'bg-cyan-600 border-cyan-400 text-white' },
-        { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', badge: 'text-indigo-400', desk: 'bg-indigo-500/20 text-indigo-400', circle: 'bg-indigo-600 border-indigo-400 text-white' },
-        { bg: 'bg-teal-500/10', border: 'border-teal-500/30', badge: 'text-teal-400', desk: 'bg-teal-500/20 text-teal-400', circle: 'bg-teal-600 border-teal-400 text-white' }
-      ];
+      function editName(index) {
+        var current = document.getElementById('name-' + index).innerText;
+        var newName = prompt('請輸入此組自訂名稱：', current);
+        if (newName && newName.trim() !== '') {
+          document.getElementById('name-' + index).innerText = newName.trim();
+        }
+      }
 
-      let tableNames = Array.from({ length: 16 }, (_, i) => `第 ${i + 1} 組`);
-      let currentGroups = Array.from({ length: totalTables }, () => []);
-      let draggedItem = null;
+      function updateTablesVisibility() {
+        var mainGrid = document.getElementById('mainGrid');
+        var capLabel = document.getElementById('capacityLabel');
+        var studentInput = document.getElementById('studentCountInput');
 
-      const container = document.getElementById('groupGrid');
-      const tableCountInput = document.getElementById('tableCountInput');
-      const studentCountInput = document.getElementById('studentCount');
-      const capacityLabel = document.getElementById('capacityLabel');
+        var maxCap = currentTableCount * 7;
+        capLabel.innerText = '/ ' + maxCap + '人';
+        studentInput.max = maxCap;
 
-      function updateGridClass() {
-        if (totalTables === 6) {
-          container.className = 'flex-1 p-2.5 gap-2.5 min-h-0 overflow-hidden grid-fixed-6';
+        if (parseInt(studentInput.value, 10) > maxCap) {
+          studentInput.value = maxCap;
+        }
+
+        if (currentTableCount === 6) {
+          mainGrid.className = 'mode-fixed-6';
         } else {
-          container.className = 'flex-1 p-2.5 gap-2.5 min-h-0 overflow-y-auto grid-dynamic-multi';
+          mainGrid.className = 'mode-scroll-multi';
+        }
+
+        for (var t = 0; t < 12; t++) {
+          var card = document.getElementById('card-' + t);
+          if (t < currentTableCount) card.classList.remove('hidden');
+          else card.classList.add('hidden');
         }
       }
 
-      function updateCapacity() {
-        const maxCapacity = totalTables * MAX_PER_TABLE;
-        studentCountInput.max = maxCapacity;
-        capacityLabel.innerText = `/ ${maxCapacity}人`;
-        if (parseInt(studentCountInput.value, 10) > maxCapacity) {
-          studentCountInput.value = maxCapacity;
-        }
-      }
+      function renderStudents(groups) {
+        for (var t = 0; t < 12; t++) {
+          var members = groups[t] || [];
+          var badge = document.getElementById('badge-' + t);
+          if (badge) badge.innerText = members.length + ' / 7 人';
 
-      function renderGrid() {
-        updateGridClass();
-        container.innerHTML = '';
-
-        for (let index = 0; index < totalTables; index++) {
-          const theme = THEME_PALETTE[index % THEME_PALETTE.length];
-          const members = currentGroups[index] || [];
-          const card = document.createElement('section');
-          card.className = `relative rounded-xl border ${theme.border} ${theme.bg} p-2.5 flex flex-col justify-between overflow-hidden shadow-sm`;
-
-          // 標題列：組別字體特大 (text-lg ~ text-xl，比座號大)，支援點擊編輯
-          const header = document.createElement('div');
-          header.className = 'flex justify-between items-center shrink-0 mb-1 border-b border-slate-800/60 pb-1';
-
-          const titleWrapper = document.createElement('div');
-          titleWrapper.className = 'flex items-center gap-1.5 cursor-pointer group';
-          titleWrapper.title = '點擊修改組別名稱';
-
-          const titleText = document.createElement('span');
-          titleText.className = `text-lg sm:text-xl font-black tracking-wide ${theme.badge} group-hover:underline flex items-center gap-1`;
-          titleText.innerText = tableNames[index] || `第 ${index + 1} 組`;
-
-          const editBadge = document.createElement('span');
-          editBadge.className = 'text-[10px] text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity';
-          editBadge.innerText = '✎';
-
-          titleWrapper.appendChild(titleText);
-          titleWrapper.appendChild(editBadge);
-
-          // 原地編輯組名
-          titleWrapper.addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.value = tableNames[index];
-            input.className = 'bg-slate-900 border border-indigo-500 text-white font-black text-lg px-2 py-0.5 rounded focus:outline-none w-36';
-
-            titleWrapper.replaceWith(input);
-            input.focus();
-            input.select();
-
-            function saveNewName() {
-              tableNames[index] = input.value.trim() || `第 ${index + 1} 組`;
-              renderGrid();
+          for (var s = 0; s < 7; s++) {
+            var el = document.getElementById('s-' + t + '-' + s);
+            if (el) {
+              if (members[s] !== undefined) {
+                el.innerText = members[s];
+                el.className = 'circle';
+              } else {
+                el.innerText = s + 1;
+                el.className = 'circle empty';
+              }
             }
-
-            input.addEventListener('blur', saveNewName);
-            input.addEventListener('keydown', (e) => {
-              if (e.key === 'Enter') saveNewName();
-              if (e.key === 'Escape') renderGrid();
-            });
-          });
-
-          const countInfo = document.createElement('span');
-          countInfo.className = 'text-xs font-mono font-medium text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800';
-          countInfo.innerText = `${members.length} / ${MAX_PER_TABLE} 人`;
-
-          header.appendChild(titleWrapper);
-          header.appendChild(countInfo);
-          card.appendChild(header);
-
-          // 中央桌子與雙列座位佈局
-          const stage = document.createElement('div');
-          stage.className = 'relative flex-1 flex flex-col justify-center items-center py-1';
-
-          // 正方形中央桌（背景標示）
-          const squareDesk = document.createElement('div');
-          squareDesk.className = `absolute w-20 h-20 rounded-xl border border-dashed border-slate-700/60 ${theme.desk} flex flex-col items-center justify-center opacity-40 pointer-events-none`;
-          squareDesk.innerHTML = `<span class="text-xs">☕</span><span class="text-[10px] font-bold tracking-wider mt-0.5">T-${index + 1}</span>`;
-          stage.appendChild(squareDesk);
-
-          // 席位容器（第一列 4 席、第二列 3 席）
-          const seatsContainer = document.createElement('div');
-          seatsContainer.className = 'relative z-10 w-full flex flex-col gap-2 items-center';
-
-          const row1 = document.createElement('div');
-          row1.className = 'flex justify-center gap-3 sm:gap-4';
-          const row2 = document.createElement('div');
-          row2.className = 'flex justify-center gap-3 sm:gap-4';
-
-          for (let seatIdx = 0; seatIdx < MAX_PER_TABLE; seatIdx++) {
-            const studentNumber = members[seatIdx];
-            const seatElem = document.createElement('div');
-
-            if (studentNumber !== undefined) {
-              seatElem.className = `w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 ${theme.circle} flex items-center justify-center text-sm sm:text-base font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform animate-pop`;
-              seatElem.innerText = studentNumber;
-              seatElem.draggable = true;
-
-              seatElem.addEventListener('dragstart', (e) => {
-                draggedItem = { fromGroup: index, seatIdx, number: studentNumber };
-                seatElem.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', studentNumber);
-              });
-              seatElem.addEventListener('dragend', () => {
-                seatElem.classList.remove('dragging');
-                draggedItem = null;
-              });
-            } else {
-              seatElem.className = 'w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-dashed border-slate-700/80 bg-slate-900/40 flex items-center justify-center text-slate-600 text-xs';
-              seatElem.innerHTML = `<span class="text-[10px] opacity-40 font-mono">${seatIdx + 1}</span>`;
-            }
-
-            if (seatIdx < 4) row1.appendChild(seatElem);
-            else row2.appendChild(seatElem);
           }
-
-          seatsContainer.appendChild(row1);
-          seatsContainer.appendChild(row2);
-          stage.appendChild(seatsContainer);
-          card.appendChild(stage);
-
-          // 跨組拖曳換位機制
-          card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drag-over'); });
-          card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-          card.addEventListener('drop', (e) => {
-            e.preventDefault();
-            card.classList.remove('drag-over');
-            if (!draggedItem || draggedItem.fromGroup === index) return;
-            if (currentGroups[index].length >= MAX_PER_TABLE) {
-              alert(`${tableNames[index]} 已滿員！`);
-              return;
-            }
-            currentGroups[draggedItem.fromGroup].splice(draggedItem.seatIdx, 1);
-            currentGroups[index].push(draggedItem.number);
-            renderGrid();
-          });
-
-          container.appendChild(card);
         }
       }
 
-      function shuffleStudents() {
-        const maxCapacity = totalTables * MAX_PER_TABLE;
-        let count = parseInt(studentCountInput.value, 10);
-        if (isNaN(count) || count < 1) count = 1;
-        if (count > maxCapacity) {
-          count = maxCapacity;
-          studentCountInput.value = maxCapacity;
+      function doShuffle() {
+        var input = document.getElementById('studentCountInput');
+        var total = parseInt(input.value, 10);
+        var maxCap = currentTableCount * 7;
+
+        if (isNaN(total) || total < 1) total = 1;
+        if (total > maxCap) {
+          total = maxCap;
+          input.value = maxCap;
         }
 
-        const students = Array.from({ length: count }, (_, i) => i + 1);
-        for (let i = students.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [students[i], students[j]] = [students[j], students[i]];
+        var list = [];
+        for (var i = 1; i <= total; i++) list.push(i);
+
+        for (var i = list.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = list[i];
+          list[i] = list[j];
+          list[j] = tmp;
         }
 
-        currentGroups = Array.from({ length: totalTables }, () => []);
-        students.forEach((studentNum, i) => {
-          currentGroups[i % totalTables].push(studentNum);
-        });
-        renderGrid();
+        var groups = [];
+        for (var t = 0; t < currentTableCount; t++) groups.push([]);
+        for (var i = 0; i < list.length; i++) {
+          groups[i % currentTableCount].push(list[i]);
+        }
+
+        renderStudents(groups);
       }
 
-      // 桌數變更事件
-      tableCountInput.addEventListener('change', (e) => {
-        let val = parseInt(e.target.value, 10);
+      // --- 表決長條圖計算 ---
+      function updateVoteDisplay() {
+        var total = votesYes + votesNo;
+        var yPct = total === 0 ? 0 : Math.round((votesYes / total) * 100);
+        var nPct = total === 0 ? 0 : Math.round((votesNo / total) * 100);
+
+        document.getElementById('txtYes').innerText = votesYes + ' 票 (' + yPct + '%)';
+        document.getElementById('txtNo').innerText = votesNo + ' 票 (' + nPct + '%)';
+        document.getElementById('txtTotal').innerText = total;
+
+        document.getElementById('barYes').style.width = yPct + '%';
+        document.getElementById('barNo').style.width = nPct + '%';
+      }
+
+      // 監聽來自手機端（或同網域標籤頁）的即時投票事件
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'classroom_vote_event' && e.newValue) {
+          try {
+            var data = JSON.parse(e.newValue);
+            if (data.type === 'yes') votesYes++;
+            else if (data.type === 'no') votesNo++;
+            updateVoteDisplay();
+          } catch(err){}
+        }
+      });
+
+      // 打開表決彈窗並自動產生 QR Code 圖片
+      document.getElementById('btnOpenVote').onclick = function() {
+        var voteUrl = window.location.origin + window.location.pathname + '?vote=true';
+        // 使用公開穩定 API 產生 QR Code，無外部 JS 腳本阻塞風險
+        document.getElementById('qrImage').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(voteUrl);
+        updateVoteDisplay();
+        document.getElementById('voteModal').classList.remove('hidden');
+      };
+
+      document.getElementById('btnCloseVote').onclick = function() {
+        document.getElementById('voteModal').classList.add('hidden');
+      };
+
+      // 手動加票與清空
+      document.getElementById('btnManualYes').onclick = function() { votesYes++; updateVoteDisplay(); };
+      document.getElementById('btnManualNo').onclick = function() { votesNo++; updateVoteDisplay(); };
+      document.getElementById('btnClearVotes').onclick = function() {
+        votesYes = 0; votesNo = 0;
+        localStorage.removeItem('student_has_voted');
+        updateVoteDisplay();
+      };
+
+      // 採納並洗牌
+      document.getElementById('btnApplyAndShuffle').onclick = function() {
+        document.getElementById('voteModal').classList.add('hidden');
+        doShuffle();
+      };
+
+      // 桌數變更
+      document.getElementById('tableCountInput').onchange = function(e) {
+        var val = parseInt(e.target.value, 10);
         if (isNaN(val) || val < 2) val = 2;
         if (val > 12) val = 12;
-        totalTables = val;
+        currentTableCount = val;
         e.target.value = val;
 
-        while (currentGroups.length < totalTables) currentGroups.push([]);
-        updateCapacity();
-        shuffleStudents();
-      });
+        updateTablesVisibility();
+        doShuffle();
+      };
 
-      // 投票彈窗控制
-      const voteModal = document.getElementById('voteModal');
-      const qrcodeContainer = document.getElementById('qrcode');
-      let qrCodeObj = null;
-
-      document.getElementById('btnOpenVoteModal').addEventListener('click', () => {
-        voteModal.classList.remove('hidden');
-        if (!qrCodeObj) {
-          const currentUrl = new URL(window.location.href);
-          currentUrl.searchParams.set('vote', 'true');
-
-          qrCodeObj = new QRCode(qrcodeContainer, {
-            text: currentUrl.toString(),
-            width: 120,
-            height: 120,
-            colorDark: "#0f172a",
-            colorLight: "#ffffff",
-            correctLevel: QRCode.CorrectLevel.M
-          });
-        }
-      });
-
-      document.getElementById('btnCloseVoteModal').addEventListener('click', () => voteModal.classList.add('hidden'));
-      document.getElementById('btnApplyShuffle').addEventListener('click', () => {
-        voteModal.classList.add('hidden');
-        shuffleStudents();
-      });
-
-      document.getElementById('btnShuffle').addEventListener('click', shuffleStudents);
-      document.getElementById('btnClear').addEventListener('click', () => {
-        currentGroups = Array.from({ length: totalTables }, () => []);
-        renderGrid();
-      });
+      document.getElementById('btnRun').onclick = doShuffle;
+      document.getElementById('btnReset').onclick = function() {
+        var emptyGroups = [];
+        for (var t = 0; t < currentTableCount; t++) emptyGroups.push([]);
+        renderStudents(emptyGroups);
+      };
 
       // 初始化
-      updateCapacity();
-      shuffleStudents();
+      updateTablesVisibility();
+      doShuffle();
     }
   </script>
 </body>
