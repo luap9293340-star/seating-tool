@@ -94,7 +94,6 @@
       background: #475569;
     }
 
-    /* 網格版面 */
     main {
       flex: 1;
       padding: 8px 12px 12px 12px;
@@ -210,7 +209,7 @@
       box-shadow: none;
     }
 
-    /* 組別顏色 */
+    /* 各組色彩 */
     .t0 { border-color: rgba(56, 189, 248, 0.5); }
     .t0 .group-title { color: #38bdf8; }
     .t0 .circle:not(.empty) { background: #0284c7; border-color: #7dd3fc; }
@@ -382,7 +381,7 @@
 </head>
 <body>
 
-  <!-- ================= 老師端主畫面 ================= -->
+  <!-- ================= 老師端大螢幕主畫面 ================= -->
   <div id="teacherView" style="height:100%; width:100%; display:flex; flex-direction:column;">
     <header>
       <div class="brand">🪑 班級大組座位分配</div>
@@ -403,7 +402,6 @@
       </div>
     </header>
 
-    <!-- 靜態 12 大桌結構 -->
     <main id="mainGrid" class="mode-fixed-6">
       <div class="table-box t0" id="card-0">
         <div class="box-header"><div class="group-title" onclick="editName(0)"><span id="name-0">第一組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-0">0 / 7 人</div></div>
@@ -450,301 +448,4 @@
       <div class="table-box t7 hidden" id="card-7">
         <div class="box-header"><div class="group-title" onclick="editName(7)"><span id="name-7">第八組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-7">0 / 7 人</div></div>
         <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>08</span></div>
-          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-7-0">1</div><div class="circle empty" id="s-7-1">2</div><div class="circle empty" id="s-7-2">3</div><div class="circle empty" id="s-7-3">4</div></div><div class="row"><div class="circle empty" id="s-7-4">5</div><div class="circle empty" id="s-7-5">6</div><div class="circle empty" id="s-7-6">7</div></div></div>
-        </div>
-      </div>
-      <div class="table-box t8 hidden" id="card-8">
-        <div class="box-header"><div class="group-title" onclick="editName(8)"><span id="name-8">第九組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-8">0 / 7 人</div></div>
-        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>09</span></div>
-          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-8-0">1</div><div class="circle empty" id="s-8-1">2</div><div class="circle empty" id="s-8-2">3</div><div class="circle empty" id="s-8-3">4</div></div><div class="row"><div class="circle empty" id="s-8-4">5</div><div class="circle empty" id="s-8-5">6</div><div class="circle empty" id="s-8-6">7</div></div></div>
-        </div>
-      </div>
-      <div class="table-box t9 hidden" id="card-9">
-        <div class="box-header"><div class="group-title" onclick="editName(9)"><span id="name-9">第十組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-9">0 / 7 人</div></div>
-        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>10</span></div>
-          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-9-0">1</div><div class="circle empty" id="s-9-1">2</div><div class="circle empty" id="s-9-2">3</div><div class="circle empty" id="s-9-3">4</div></div><div class="row"><div class="circle empty" id="s-9-4">5</div><div class="circle empty" id="s-9-5">6</div><div class="circle empty" id="s-9-6">7</div></div></div>
-        </div>
-      </div>
-      <div class="table-box t10 hidden" id="card-10">
-        <div class="box-header"><div class="group-title" onclick="editName(10)"><span id="name-10">第十一組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-10">0 / 7 人</div></div>
-        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>11</span></div>
-          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-10-0">1</div><div class="circle empty" id="s-10-1">2</div><div class="circle empty" id="s-10-2">3</div><div class="circle empty" id="s-10-3">4</div></div><div class="row"><div class="circle empty" id="s-10-4">5</div><div class="circle empty" id="s-10-5">6</div><div class="circle empty" id="s-10-6">7</div></div></div>
-        </div>
-      </div>
-      <div class="table-box t11 hidden" id="card-11">
-        <div class="box-header"><div class="group-title" onclick="editName(11)"><span id="name-11">第十二組</span> <small style="font-size:12px;opacity:0.5;">✎</small></div><div class="badge" id="badge-11">0 / 7 人</div></div>
-        <div class="desk-stage"><div class="desk-square"><span>TABLE</span><span>12</span></div>
-          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-11-0">1</div><div class="circle empty" id="s-11-1">2</div><div class="circle empty" id="s-11-2">3</div><div class="circle empty" id="s-11-3">4</div></div><div class="row"><div class="circle empty" id="s-11-4">5</div><div class="circle empty" id="s-11-5">6</div><div class="circle empty" id="s-11-6">7</div></div></div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <!-- ================= 表決彈窗 (老師端大螢幕) ================= -->
-  <div id="voteModal" class="vote-modal-backdrop hidden">
-    <div class="vote-box">
-      <div class="vote-head">
-        <span style="font-size:16px; font-weight:bold; color:#f8fafc;">課堂表決：是否重新抽籤換座位？</span>
-        <button id="btnCloseVote" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer;">✕</button>
-      </div>
-
-      <div class="vote-body">
-        <div class="qr-container">
-          <img id="qrImage" src="" alt="投票 QR Code">
-          <span class="qr-subtext">同學掃描投票</span>
-        </div>
-
-        <div class="vote-stats">
-          <div>
-            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
-              <span style="color:#34d399;">贊成換座位</span>
-              <span id="txtYes" style="color:#34d399;">0 票 (0%)</span>
-            </div>
-            <div class="bar-wrap"><div id="barYes" class="bar-fill-yes"></div></div>
-          </div>
-
-          <div>
-            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:bold;">
-              <span style="color:#f87171;">維持現狀</span>
-              <span id="txtNo" style="color:#f87171;">0 票 (0%)</span>
-            </div>
-            <div class="bar-wrap"><div id="barNo" class="bar-fill-no"></div></div>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:#94a3b8; border-top:1px solid #334155; padding-top:8px;">
-            <span>總票數：<strong id="txtTotal" style="color:#fff;">0</strong></span>
-            <div style="display:flex; gap:6px;">
-              <button class="btn btn-clear" id="btnManualYes" style="padding:4px 8px; font-size:11px;">+1 贊成</button>
-              <button class="btn btn-clear" id="btnManualNo" style="padding:4px 8px; font-size:11px;">+1 反對</button>
-              <button class="btn btn-clear" id="btnClearVotes" style="padding:4px 8px; font-size:11px;">清空</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-        <button class="btn btn-shuffle" id="btnApplyAndShuffle" style="background:#10b981;">採納結果並隨機洗牌</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================= 學生端手機投票介面 ================= -->
-  <div id="studentView" class="hidden">
-    <div class="student-card">
-      <h2 style="font-size:18px; margin-bottom:8px; color:#38bdf8;">課堂匿名表決</h2>
-      <p style="font-size:13px; color:#94a3b8; margin-bottom:20px;">是否贊成這節課重新抽籤換座位？</p>
-
-      <div id="studentActionWrap">
-        <button class="btn-large-yes" id="btnStuYes">✔ 贊成換座位</button>
-        <button class="btn-large-no" id="btnStuNo">✖ 維持現狀</button>
-      </div>
-
-      <div id="studentDoneWrap" class="hidden" style="padding:16px 0;">
-        <div style="font-size:36px; margin-bottom:8px;">✅</div>
-        <h3 style="font-size:16px; font-weight:bold; color:#10b981; margin-bottom:4px;">投票已送出！</h3>
-        <p style="font-size:12px; color:#94a3b8;">請看黑板投影幕即時開票結果。</p>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // 判斷是否為手機掃描投票模式
-    var isStudentMode = window.location.search.indexOf('vote=true') !== -1;
-
-    if (isStudentMode) {
-      document.getElementById('teacherView').style.display = 'none';
-      document.getElementById('studentView').classList.remove('hidden');
-
-      var stuAction = document.getElementById('studentActionWrap');
-      var stuDone = document.getElementById('studentDoneWrap');
-
-      // 檢查是否已投過票
-      if (localStorage.getItem('student_has_voted')) {
-        stuAction.classList.add('hidden');
-        stuDone.classList.remove('hidden');
-      }
-
-      function sendStudentVote(choice) {
-        localStorage.setItem('student_has_voted', 'true');
-        stuAction.classList.add('hidden');
-        stuDone.classList.remove('hidden');
-
-        // 發送廣播通知大螢幕
-        var voteEvent = { type: choice, timestamp: Date.now() };
-        localStorage.setItem('classroom_vote_event', JSON.stringify(voteEvent));
-      }
-
-      document.getElementById('btnStuYes').onclick = function() { sendStudentVote('yes'); };
-      document.getElementById('btnStuNo').onclick = function() { sendStudentVote('no'); };
-
-    } else {
-      // 老師端主邏輯
-      var currentTableCount = 6;
-      var votesYes = 0;
-      var votesNo = 0;
-
-      function editName(index) {
-        var current = document.getElementById('name-' + index).innerText;
-        var newName = prompt('請輸入此組自訂名稱：', current);
-        if (newName && newName.trim() !== '') {
-          document.getElementById('name-' + index).innerText = newName.trim();
-        }
-      }
-
-      function updateTablesVisibility() {
-        var mainGrid = document.getElementById('mainGrid');
-        var capLabel = document.getElementById('capacityLabel');
-        var studentInput = document.getElementById('studentCountInput');
-
-        var maxCap = currentTableCount * 7;
-        capLabel.innerText = '/ ' + maxCap + '人';
-        studentInput.max = maxCap;
-
-        if (parseInt(studentInput.value, 10) > maxCap) {
-          studentInput.value = maxCap;
-        }
-
-        if (currentTableCount === 6) {
-          mainGrid.className = 'mode-fixed-6';
-        } else {
-          mainGrid.className = 'mode-scroll-multi';
-        }
-
-        for (var t = 0; t < 12; t++) {
-          var card = document.getElementById('card-' + t);
-          if (t < currentTableCount) card.classList.remove('hidden');
-          else card.classList.add('hidden');
-        }
-      }
-
-      function renderStudents(groups) {
-        for (var t = 0; t < 12; t++) {
-          var members = groups[t] || [];
-          var badge = document.getElementById('badge-' + t);
-          if (badge) badge.innerText = members.length + ' / 7 人';
-
-          for (var s = 0; s < 7; s++) {
-            var el = document.getElementById('s-' + t + '-' + s);
-            if (el) {
-              if (members[s] !== undefined) {
-                el.innerText = members[s];
-                el.className = 'circle';
-              } else {
-                el.innerText = s + 1;
-                el.className = 'circle empty';
-              }
-            }
-          }
-        }
-      }
-
-      function doShuffle() {
-        var input = document.getElementById('studentCountInput');
-        var total = parseInt(input.value, 10);
-        var maxCap = currentTableCount * 7;
-
-        if (isNaN(total) || total < 1) total = 1;
-        if (total > maxCap) {
-          total = maxCap;
-          input.value = maxCap;
-        }
-
-        var list = [];
-        for (var i = 1; i <= total; i++) list.push(i);
-
-        for (var i = list.length - 1; i > 0; i--) {
-          var j = Math.floor(Math.random() * (i + 1));
-          var tmp = list[i];
-          list[i] = list[j];
-          list[j] = tmp;
-        }
-
-        var groups = [];
-        for (var t = 0; t < currentTableCount; t++) groups.push([]);
-        for (var i = 0; i < list.length; i++) {
-          groups[i % currentTableCount].push(list[i]);
-        }
-
-        renderStudents(groups);
-      }
-
-      // --- 表決長條圖計算 ---
-      function updateVoteDisplay() {
-        var total = votesYes + votesNo;
-        var yPct = total === 0 ? 0 : Math.round((votesYes / total) * 100);
-        var nPct = total === 0 ? 0 : Math.round((votesNo / total) * 100);
-
-        document.getElementById('txtYes').innerText = votesYes + ' 票 (' + yPct + '%)';
-        document.getElementById('txtNo').innerText = votesNo + ' 票 (' + nPct + '%)';
-        document.getElementById('txtTotal').innerText = total;
-
-        document.getElementById('barYes').style.width = yPct + '%';
-        document.getElementById('barNo').style.width = nPct + '%';
-      }
-
-      // 監聽來自手機端（或同網域標籤頁）的即時投票事件
-      window.addEventListener('storage', function(e) {
-        if (e.key === 'classroom_vote_event' && e.newValue) {
-          try {
-            var data = JSON.parse(e.newValue);
-            if (data.type === 'yes') votesYes++;
-            else if (data.type === 'no') votesNo++;
-            updateVoteDisplay();
-          } catch(err){}
-        }
-      });
-
-      // 打開表決彈窗並自動產生 QR Code 圖片
-      document.getElementById('btnOpenVote').onclick = function() {
-        var voteUrl = window.location.origin + window.location.pathname + '?vote=true';
-        // 使用公開穩定 API 產生 QR Code，無外部 JS 腳本阻塞風險
-        document.getElementById('qrImage').src = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(voteUrl);
-        updateVoteDisplay();
-        document.getElementById('voteModal').classList.remove('hidden');
-      };
-
-      document.getElementById('btnCloseVote').onclick = function() {
-        document.getElementById('voteModal').classList.add('hidden');
-      };
-
-      // 手動加票與清空
-      document.getElementById('btnManualYes').onclick = function() { votesYes++; updateVoteDisplay(); };
-      document.getElementById('btnManualNo').onclick = function() { votesNo++; updateVoteDisplay(); };
-      document.getElementById('btnClearVotes').onclick = function() {
-        votesYes = 0; votesNo = 0;
-        localStorage.removeItem('student_has_voted');
-        updateVoteDisplay();
-      };
-
-      // 採納並洗牌
-      document.getElementById('btnApplyAndShuffle').onclick = function() {
-        document.getElementById('voteModal').classList.add('hidden');
-        doShuffle();
-      };
-
-      // 桌數變更
-      document.getElementById('tableCountInput').onchange = function(e) {
-        var val = parseInt(e.target.value, 10);
-        if (isNaN(val) || val < 2) val = 2;
-        if (val > 12) val = 12;
-        currentTableCount = val;
-        e.target.value = val;
-
-        updateTablesVisibility();
-        doShuffle();
-      };
-
-      document.getElementById('btnRun').onclick = doShuffle;
-      document.getElementById('btnReset').onclick = function() {
-        var emptyGroups = [];
-        for (var t = 0; t < currentTableCount; t++) emptyGroups.push([]);
-        renderStudents(emptyGroups);
-      };
-
-      // 初始化
-      updateTablesVisibility();
-      doShuffle();
-    }
-  </script>
-</body>
-</html>
+          <div class="seats-grid"><div class="row"><div class="circle empty" id="s-7-0">1</div><div class="circle empty" id="s-7-1">2</div><div class="circle empty" id="s-7-2">3</div><div class="circle empty" id="s-7-3">4</div></div><div class="row"><div class="circle empty" id="s
